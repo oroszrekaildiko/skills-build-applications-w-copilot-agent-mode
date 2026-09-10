@@ -1,4 +1,6 @@
 import express from 'express';
+import { connectDatabase } from './config/database.js';
+import apiRouter from './routes.js';
 
 const app = express();
 const port = Number(process.env.PORT || 8000);
@@ -9,6 +11,16 @@ app.get('/api/health', (_request, response) => {
   response.json({ status: 'ok' });
 });
 
+app.use('/api', apiRouter);
+
+app.use((error: unknown, _request: express.Request, response: express.Response, _next: express.NextFunction) => {
+  console.error(error);
+  response.status(400).json({ error: 'Request could not be processed' });
+});
+
 app.listen(port, () => {
   console.log(`OctoFit API listening on port ${port}`);
+  void connectDatabase().catch((error: unknown) => {
+    console.error('MongoDB connection unavailable:', error);
+  });
 });
