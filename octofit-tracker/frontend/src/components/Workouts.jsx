@@ -1,7 +1,31 @@
-import { useCollection } from '../api.js'
+import { useEffect, useState } from 'react'
 
 function Workouts() {
-  const { data: workouts, loading, error } = useCollection('workouts')
+  const [workouts, setWorkouts] = useState([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState('')
+
+  useEffect(() => {
+    const controller = new AbortController()
+    const codespaceName = import.meta.env.VITE_CODESPACE_NAME?.trim()
+    const apiUrl = codespaceName
+      ? `https://${codespaceName}-8000.app.github.dev/api/workouts/`
+      : 'http://localhost:8000/api/workouts/'
+
+    fetch(apiUrl, { signal: controller.signal })
+      .then(async (response) => {
+        if (!response.ok) throw new Error(`Unable to load workouts (${response.status})`)
+        const payload = await response.json()
+        return Array.isArray(payload) ? payload : payload.data || payload.results || payload.items || []
+      })
+      .then(setWorkouts)
+      .catch((fetchError) => {
+        if (fetchError.name !== 'AbortError') setError(fetchError.message)
+      })
+      .finally(() => setLoading(false))
+
+    return () => controller.abort()
+  }, [])
 
   return (
     <section className="resource-page">

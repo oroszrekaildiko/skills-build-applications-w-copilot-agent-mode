@@ -1,7 +1,31 @@
-import { useCollection } from '../api.js'
+import { useEffect, useState } from 'react'
 
 function Teams() {
-  const { data: teams, loading, error } = useCollection('teams')
+  const [teams, setTeams] = useState([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState('')
+
+  useEffect(() => {
+    const controller = new AbortController()
+    const codespaceName = import.meta.env.VITE_CODESPACE_NAME?.trim()
+    const apiUrl = codespaceName
+      ? `https://${codespaceName}-8000.app.github.dev/api/teams/`
+      : 'http://localhost:8000/api/teams/'
+
+    fetch(apiUrl, { signal: controller.signal })
+      .then(async (response) => {
+        if (!response.ok) throw new Error(`Unable to load teams (${response.status})`)
+        const payload = await response.json()
+        return Array.isArray(payload) ? payload : payload.data || payload.results || payload.items || []
+      })
+      .then(setTeams)
+      .catch((fetchError) => {
+        if (fetchError.name !== 'AbortError') setError(fetchError.message)
+      })
+      .finally(() => setLoading(false))
+
+    return () => controller.abort()
+  }, [])
 
   return (
     <section className="resource-page">

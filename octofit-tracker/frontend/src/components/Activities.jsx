@@ -1,7 +1,31 @@
-import { useCollection } from '../api.js'
+import { useEffect, useState } from 'react'
 
 function Activities() {
-  const { data: activities, loading, error } = useCollection('activities')
+  const [activities, setActivities] = useState([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState('')
+
+  useEffect(() => {
+    const controller = new AbortController()
+    const codespaceName = import.meta.env.VITE_CODESPACE_NAME?.trim()
+    const apiUrl = codespaceName
+      ? `https://${codespaceName}-8000.app.github.dev/api/activities/`
+      : 'http://localhost:8000/api/activities/'
+
+    fetch(apiUrl, { signal: controller.signal })
+      .then(async (response) => {
+        if (!response.ok) throw new Error(`Unable to load activities (${response.status})`)
+        const payload = await response.json()
+        return Array.isArray(payload) ? payload : payload.data || payload.results || payload.items || []
+      })
+      .then(setActivities)
+      .catch((fetchError) => {
+        if (fetchError.name !== 'AbortError') setError(fetchError.message)
+      })
+      .finally(() => setLoading(false))
+
+    return () => controller.abort()
+  }, [])
 
   return (
     <section className="resource-page">
